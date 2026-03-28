@@ -3,7 +3,7 @@ import React from "react";
 import { brand } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
-type IconName =
+export type IconName =
   | "overview"
   | "courses"
   | "team"

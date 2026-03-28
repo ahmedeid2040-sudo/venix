@@ -1,3 +1,5 @@
+import type { IconName } from "@/components/ui";
+
 export type CurrencyCode = "EGP" | "AED" | "SAR";
 
 export type CourseStatus =
@@ -1550,7 +1552,14 @@ export const quickActions = [
   { label: "إضافة رسوم تحصيل", href: "/collection-fees#create-form" }
 ];
 
-export const navigation = [
+export const navigation: {
+  section: string;
+  items: {
+    label: string;
+    href: string;
+    icon: IconName;
+  }[];
+}[] = [
   {
     section: "الرؤية العامة",
     items: [
