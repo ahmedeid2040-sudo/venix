@@ -1,0 +1,200 @@
+@import url('https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  --surface-0: #07111d;
+  --surface-1: rgba(12, 21, 36, 0.9);
+  --surface-2: rgba(17, 28, 47, 0.88);
+  --surface-3: #142139;
+  --surface-4: #1a2942;
+  --stroke-soft: rgba(148, 163, 184, 0.14);
+  --stroke-strong: rgba(190, 215, 255, 0.22);
+  --text-primary: #f8fafc;
+  --text-secondary: #bdc8da;
+  --text-muted: #8c9bb2;
+  --brand-gold: #c8a86a;
+  --brand-gold-soft: rgba(200, 168, 106, 0.16);
+  --brand-cyan: #55c6d5;
+  --brand-cyan-soft: rgba(85, 198, 213, 0.12);
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.14);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.16);
+  --danger: #fb7185;
+  --danger-soft: rgba(251, 113, 133, 0.16);
+  --info: #60a5fa;
+  --info-soft: rgba(96, 165, 250, 0.16);
+  --shadow-lg: 0 28px 90px rgba(3, 8, 20, 0.35);
+  --radius-xl: 28px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 13px;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--text-primary);
+  font-family: "Almarai", "Tahoma", sans-serif;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(85, 198, 213, 0.16), transparent 24%),
+    radial-gradient(circle at 12% 0%, rgba(200, 168, 106, 0.12), transparent 28%),
+    linear-gradient(180deg, #07101a 0%, #091421 48%, #08111d 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(85, 198, 213, 0.28);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(8, 16, 28, 0.9);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(200, 168, 106, 0.35);
+  border-radius: 999px;
+}
+
+.app-shell-grid {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.panel-sheen::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 34%),
+    linear-gradient(120deg, rgba(200, 168, 106, 0.05), transparent 40%);
+  pointer-events: none;
+}
+
+.glass-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--stroke-soft);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(180deg, rgba(10, 18, 31, 0.92), rgba(12, 21, 36, 0.88));
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(18px);
+}
+
+.soft-card {
+  border: 1px solid var(--stroke-soft);
+  border-radius: 24px;
+  background: rgba(10, 18, 31, 0.76);
+  backdrop-filter: blur(14px);
+}
+
+.section-divider {
+  border-top: 1px solid var(--stroke-soft);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.38rem 0.76rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.shadow-glow {
+  box-shadow:
+    0 0 0 1px rgba(200, 168, 106, 0.08),
+    0 16px 42px rgba(4, 10, 20, 0.34);
+}
+
+.anchor-section {
+  scroll-margin-top: 7.5rem;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(189, 200, 218, 0.5);
+}
+
+.no-print {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.report-sheet {
+  background: white;
+  color: #111827;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body {
+    background: white !important;
+    color: #111827 !important;
+  }
+
+  .no-print,
+  header,
+  aside {
+    display: none !important;
+  }
+
+  main,
+  .print-root {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .glass-card,
+  .soft-card,
+  .report-sheet {
+    box-shadow: none !important;
+    border: 1px solid #d1d5db !important;
+    background: white !important;
+    color: #111827 !important;
+    backdrop-filter: none !important;
+  }
+
+  table {
+    width: 100% !important;
+    font-size: 11px !important;
+  }
+
+  th,
+  td {
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+  }
+}

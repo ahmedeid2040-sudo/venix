@@ -1,0 +1,485 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  manager
+  accountant
+}
+
+enum AccountStatus {
+  active
+  inactive
+}
+
+enum CourseStatus {
+  planned
+  open
+  assembling
+  minimumReached
+  held
+  postponed
+  cancelled
+}
+
+enum PaymentStatus {
+  unpaid
+  partial
+  paid
+  refundDue
+  partiallyRefunded
+  fullyRefunded
+  transferred
+}
+
+enum RegistrationStatus {
+  provisional
+  confirmed
+  awaitingFullPayment
+  awaitingCourseHeld
+  active
+  withdrawn
+  cancelled
+  transferred
+  completed
+}
+
+enum CommissionStatus {
+  expected
+  notEligibleYet
+  eligible
+  paid
+  cancelled
+}
+
+enum CollectionStatus {
+  confirmed
+  cancelled
+  partiallyRefunded
+  fullyRefunded
+}
+
+enum RefundType {
+  partial
+  full
+}
+
+enum MainExpenseClass {
+  establishment
+  asset
+  operations
+  collectionFees
+}
+
+enum AccountType {
+  bank
+  wallet
+  instantTransfer
+  paymentGateway
+  cashbox
+}
+
+enum CurrencyCode {
+  EGP
+  AED
+  SAR
+}
+
+enum AttachmentEntityType {
+  registration
+  collection
+  collectionFee
+  refund
+  registrationTransfer
+  internalTransfer
+  expense
+  account
+  party
+  course
+  report
+}
+
+model SystemUser {
+  id             String      @id @default(cuid())
+  username       String      @unique
+  displayName    String
+  role           UserRole
+  passwordHash   String
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  attachments    Attachment[] @relation("AttachmentUploadedBy")
+  auditLogs      AuditLog[]
+}
+
+model Party {
+  id                     String             @id @default(cuid())
+  code                   String             @unique
+  name                   String
+  adminRole              String
+  isPartner              Boolean            @default(false)
+  isFunder               Boolean            @default(false)
+  receivesMoney          Boolean            @default(false)
+  paysExpenses           Boolean            @default(false)
+  ownsCollectionAccount  Boolean            @default(false)
+  hasRunningBalance      Boolean            @default(false)
+  accountingNotes        String?
+  status                 AccountStatus      @default(active)
+  fundsHeldEgp           Decimal            @default(0) @db.Decimal(18,2)
+  personalSpendEgp       Decimal            @default(0) @db.Decimal(18,2)
+  settledEgp             Decimal            @default(0) @db.Decimal(18,2)
+  outstandingEgp         Decimal            @default(0) @db.Decimal(18,2)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  ownedAccounts          CollectionAccount[]
+  collectedCollections   Collection[]       @relation("CollectionCollectorParty")
+  processedRefunds       Refund[]           @relation("RefundProcessedByParty")
+  receivedTransfers      InternalTransfer[] @relation("InternalTransferReceiverParty")
+  paidExpensesList       Expense[]          @relation("ExpensePaidByParty")
+  auditLogs              AuditLog[]         @relation("AuditLogParty")
+
+  @@index([status])
+}
+
+model CollectionAccount {
+  id                    String             @id @default(cuid())
+  code                  String             @unique
+  name                  String
+  type                  AccountType
+  ownerPartyId          String
+  ownerParty            Party              @relation(fields: [ownerPartyId], references: [id])
+  isPersonal            Boolean            @default(true)
+  baseCurrency          CurrencyCode
+  acceptsCollections    Boolean            @default(true)
+  canSpend              Boolean            @default(false)
+  canTransferToCash     Boolean            @default(true)
+  status                AccountStatus      @default(active)
+  notes                 String?
+  balanceOriginal       Decimal            @default(0) @db.Decimal(18,2)
+  balanceEgp            Decimal            @default(0) @db.Decimal(18,2)
+  totalCollectedEgp     Decimal            @default(0) @db.Decimal(18,2)
+  feesEgp               Decimal            @default(0) @db.Decimal(18,2)
+  transferredToCashEgp  Decimal            @default(0) @db.Decimal(18,2)
+  netAvailableEgp       Decimal            @default(0) @db.Decimal(18,2)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  collections           Collection[]
+  collectionFees        CollectionFee[]
+  refunds               Refund[]
+  outgoingTransfers     InternalTransfer[] @relation("FromAccount")
+  incomingTransfers     InternalTransfer[] @relation("ToAccount")
+  expenses              Expense[]          @relation("ExpensePaidFromAccount")
+  attachments           Attachment[]       @relation("AttachmentAccount")
+
+  @@index([ownerPartyId])
+  @@index([status])
+  @@index([type])
+}
+
+model Course {
+  id                String            @id @default(cuid())
+  code              String            @unique
+  name              String
+  shortDescription  String?
+  standardPrice     Decimal           @db.Decimal(18,2)
+  baseCurrency      CurrencyCode
+  minimumParticipants Int
+  expectedStart     DateTime
+  expectedEnd       DateTime?
+  status            CourseStatus      @default(planned)
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  registrations     Registration[]
+  sourceTransfers   RegistrationTransfer[] @relation("OriginalCourse")
+  targetTransfers   RegistrationTransfer[] @relation("NewCourse")
+  refunds           Refund[]
+  attachments       Attachment[]      @relation("AttachmentCourse")
+
+  @@index([status])
+  @@index([expectedStart])
+}
+
+model SalesRep {
+  id                        String         @id @default(cuid())
+  code                      String         @unique
+  name                      String
+  phone                     String?
+  status                    AccountStatus  @default(active)
+  defaultCommissionRate     Decimal?       @db.Decimal(5,2)
+  notes                     String?
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
+  registrations             Registration[]
+
+  @@index([status])
+}
+
+model Registration {
+  id                       String               @id @default(cuid())
+  code                     String               @unique
+  registrationDate         DateTime
+  customerName             String
+  phone                    String?
+  country                  String?
+  city                     String?
+  source                   String?
+  courseId                 String
+  course                   Course               @relation(fields: [courseId], references: [id])
+  salesRepId               String
+  salesRep                 SalesRep             @relation(fields: [salesRepId], references: [id])
+  standardPrice            Decimal              @db.Decimal(18,2)
+  soldPrice                Decimal              @db.Decimal(18,2)
+  soldPriceEgp             Decimal              @db.Decimal(18,2)
+  discount                 Decimal              @default(0) @db.Decimal(18,2)
+  currency                 CurrencyCode
+  commissionRate           Decimal              @db.Decimal(5,2)
+  expectedCommission       Decimal              @db.Decimal(18,2)
+  expectedCommissionEgp    Decimal              @db.Decimal(18,2)
+  eligibleCommissionEgp    Decimal              @default(0) @db.Decimal(18,2)
+  paidCommissionEgp        Decimal              @default(0) @db.Decimal(18,2)
+  paymentStatus            PaymentStatus        @default(unpaid)
+  registrationStatus       RegistrationStatus   @default(provisional)
+  commissionStatus         CommissionStatus     @default(expected)
+  totalPaid                Decimal              @default(0) @db.Decimal(18,2)
+  totalPaidEgp             Decimal              @default(0) @db.Decimal(18,2)
+  remaining                Decimal              @default(0) @db.Decimal(18,2)
+  remainingEgp             Decimal              @default(0) @db.Decimal(18,2)
+  notes                    String?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  collections              Collection[]
+  refunds                  Refund[]
+  originalTransfers        RegistrationTransfer[] @relation("OriginalRegistration")
+  newTransfers             RegistrationTransfer[] @relation("NewRegistration")
+  attachments              Attachment[]         @relation("AttachmentRegistration")
+
+  @@index([courseId])
+  @@index([salesRepId])
+  @@index([paymentStatus])
+  @@index([registrationStatus])
+  @@index([commissionStatus])
+}
+
+model Collection {
+  id                 String            @id @default(cuid())
+  code               String            @unique
+  registrationId     String
+  registration       Registration      @relation(fields: [registrationId], references: [id])
+  collectionDate     DateTime
+  paymentType        String
+  amountOriginal     Decimal           @db.Decimal(18,2)
+  currency           CurrencyCode
+  exchangeRate       Decimal           @db.Decimal(18,6)
+  amountEgp          Decimal           @db.Decimal(18,2)
+  accountId          String
+  account            CollectionAccount @relation(fields: [accountId], references: [id])
+  collectorPartyId   String
+  collectorParty     Party             @relation("CollectionCollectorParty", fields: [collectorPartyId], references: [id])
+  grossBeforeFees    Decimal?          @db.Decimal(18,2)
+  status             CollectionStatus  @default(confirmed)
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  fees               CollectionFee[]
+  attachments        Attachment[]      @relation("AttachmentCollection")
+
+  @@index([registrationId])
+  @@index([accountId])
+  @@index([collectorPartyId])
+  @@index([status])
+}
+
+model CollectionFee {
+  id                 String            @id @default(cuid())
+  code               String            @unique
+  feeDate            DateTime
+  accountId          String
+  account            CollectionAccount @relation(fields: [accountId], references: [id])
+  operationType      String
+  referenceCode      String?
+  collectionId       String?
+  collection         Collection?       @relation(fields: [collectionId], references: [id])
+  feeType            String
+  amountOriginal     Decimal           @db.Decimal(18,2)
+  currency           CurrencyCode
+  exchangeRate       Decimal           @db.Decimal(18,6)
+  amountEgp          Decimal           @db.Decimal(18,2)
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  attachments        Attachment[]      @relation("AttachmentCollectionFee")
+
+  @@index([accountId])
+  @@index([collectionId])
+  @@index([feeDate])
+}
+
+model Refund {
+  id                 String            @id @default(cuid())
+  code               String            @unique
+  registrationId     String
+  registration       Registration      @relation(fields: [registrationId], references: [id])
+  courseId           String
+  course             Course            @relation(fields: [courseId], references: [id])
+  refundDate         DateTime
+  refundType         RefundType
+  amountOriginal     Decimal           @db.Decimal(18,2)
+  currency           CurrencyCode
+  exchangeRate       Decimal           @db.Decimal(18,6)
+  amountEgp          Decimal           @db.Decimal(18,2)
+  accountId          String
+  account            CollectionAccount @relation(fields: [accountId], references: [id])
+  processedByPartyId String
+  processedByParty   Party             @relation("RefundProcessedByParty", fields: [processedByPartyId], references: [id])
+  reason             String
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  attachments        Attachment[]      @relation("AttachmentRefund")
+
+  @@index([registrationId])
+  @@index([courseId])
+  @@index([accountId])
+  @@index([processedByPartyId])
+}
+
+model RegistrationTransfer {
+  id                      String          @id @default(cuid())
+  code                    String          @unique
+  transferDate            DateTime
+  originalRegistrationId  String
+  originalRegistration    Registration    @relation("OriginalRegistration", fields: [originalRegistrationId], references: [id])
+  newRegistrationId       String
+  newRegistration         Registration    @relation("NewRegistration", fields: [newRegistrationId], references: [id])
+  originalCourseId        String
+  originalCourse          Course          @relation("OriginalCourse", fields: [originalCourseId], references: [id])
+  newCourseId             String
+  newCourse               Course          @relation("NewCourse", fields: [newCourseId], references: [id])
+  amountOriginal          Decimal         @db.Decimal(18,2)
+  currency                CurrencyCode
+  exchangeRate            Decimal         @db.Decimal(18,6)
+  amountEgp               Decimal         @db.Decimal(18,2)
+  reason                  String
+  notes                   String?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  attachments             Attachment[]    @relation("AttachmentRegistrationTransfer")
+
+  @@index([originalRegistrationId])
+  @@index([newRegistrationId])
+  @@index([originalCourseId])
+  @@index([newCourseId])
+}
+
+model InternalTransfer {
+  id                 String            @id @default(cuid())
+  code               String            @unique
+  transferDate       DateTime
+  fromAccountId      String
+  fromAccount        CollectionAccount @relation("FromAccount", fields: [fromAccountId], references: [id])
+  toAccountId        String
+  toAccount          CollectionAccount @relation("ToAccount", fields: [toAccountId], references: [id])
+  amountOriginal     Decimal           @db.Decimal(18,2)
+  currency           CurrencyCode
+  exchangeRate       Decimal           @db.Decimal(18,6)
+  amountEgp          Decimal           @db.Decimal(18,2)
+  relatedFeesEgp     Decimal           @default(0) @db.Decimal(18,2)
+  netDeliveredEgp    Decimal           @db.Decimal(18,2)
+  receiverPartyId    String?
+  receiverParty      Party?            @relation("InternalTransferReceiverParty", fields: [receiverPartyId], references: [id])
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  attachments        Attachment[]      @relation("AttachmentInternalTransfer")
+
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([receiverPartyId])
+}
+
+model Expense {
+  id                 String            @id @default(cuid())
+  code               String            @unique
+  expenseDate        DateTime
+  mainClass          MainExpenseClass
+  subClass           String
+  description        String
+  vendor             String?
+  amountOriginal     Decimal           @db.Decimal(18,2)
+  currency           CurrencyCode
+  exchangeRate       Decimal           @db.Decimal(18,6)
+  amountEgp          Decimal           @db.Decimal(18,2)
+  paidByPartyId      String
+  paidByParty        Party             @relation("ExpensePaidByParty", fields: [paidByPartyId], references: [id])
+  paidFromAccountId  String
+  paidFromAccount    CollectionAccount @relation("ExpensePaidFromAccount", fields: [paidFromAccountId], references: [id])
+  isSettled          Boolean           @default(false)
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  attachments        Attachment[]      @relation("AttachmentExpense")
+
+  @@index([mainClass])
+  @@index([paidByPartyId])
+  @@index([paidFromAccountId])
+}
+
+model Attachment {
+  id                 String               @id @default(cuid())
+  fileName           String
+  originalName       String
+  mimeType           String?
+  fileSize           Int?
+  publicUrl          String
+  entityType         AttachmentEntityType
+  entityId           String
+  registrationId     String?
+  registration       Registration?        @relation("AttachmentRegistration", fields: [registrationId], references: [id])
+  collectionId       String?
+  collection         Collection?          @relation("AttachmentCollection", fields: [collectionId], references: [id])
+  collectionFeeId    String?
+  collectionFee      CollectionFee?       @relation("AttachmentCollectionFee", fields: [collectionFeeId], references: [id])
+  refundId           String?
+  refund             Refund?              @relation("AttachmentRefund", fields: [refundId], references: [id])
+  registrationTransferId String?
+  registrationTransfer   RegistrationTransfer? @relation("AttachmentRegistrationTransfer", fields: [registrationTransferId], references: [id])
+  internalTransferId String?
+  internalTransfer   InternalTransfer?    @relation("AttachmentInternalTransfer", fields: [internalTransferId], references: [id])
+  expenseId          String?
+  expense            Expense?             @relation("AttachmentExpense", fields: [expenseId], references: [id])
+  accountId          String?
+  account            CollectionAccount?   @relation("AttachmentAccount", fields: [accountId], references: [id])
+  courseId           String?
+  course             Course?              @relation("AttachmentCourse", fields: [courseId], references: [id])
+  uploadedByUserId   String?
+  uploadedByUser     SystemUser?          @relation("AttachmentUploadedBy", fields: [uploadedByUserId], references: [id])
+  createdAt          DateTime             @default(now())
+
+  @@index([entityType, entityId])
+  @@index([uploadedByUserId])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  userId         String?
+  user           SystemUser?  @relation(fields: [userId], references: [id])
+  action         String
+  entityType     String
+  entityId       String?
+  beforeData     Json?
+  afterData      Json?
+  ipAddress      String?
+  userAgent      String?
+  relatedPartyId String?
+  relatedParty   Party?       @relation("AuditLogParty", fields: [relatedPartyId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
