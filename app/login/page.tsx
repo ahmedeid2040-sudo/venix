@@ -50,8 +50,7 @@ export default function LoginPage() {
 
           <div className="section-divider mt-8 flex flex-col gap-4 pt-5 md:flex-row md:items-center md:justify-between">
             <p className="max-w-2xl text-[13px] leading-7 text-[var(--text-secondary)]">
-              الواجهة موجهة للإدارة والمحاسبة داخل مركز فينكس، وتراعي وضوح القراءة، وسهولة المتابعة،
-              وعزل البيانات الحساسة عن الزوار غير المصرح لهم.
+              الواجهة موجهة للإدارة والمحاسبة داخل مركز فينكس
             </p>
             <p className="text-[13px] font-bold text-[var(--text-muted)]">{brand.footerCredit}</p>
           </div>
